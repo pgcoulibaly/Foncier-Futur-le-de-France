@@ -8,3 +8,6 @@ os
 psycopg2
 geopy
 request
+streamlit
+streamlit_folium
+folium
