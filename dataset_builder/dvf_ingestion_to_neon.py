@@ -21,7 +21,7 @@ for dep in departements_idf:
     print(f"Chargement : {url}")
     
     try:
-        df = pd.read_csv(url, sep=';', compression='gzip', low_memory=False)
+        df = pd.read_csv(url, sep=',', compression='gzip', low_memory=False)
         df['departement'] = dep
         df_list.append(df)
     except Exception as e:
