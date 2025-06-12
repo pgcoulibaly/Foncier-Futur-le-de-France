@@ -2,3 +2,6 @@ pandas
 duckdb
 scipy
 numpy
+sqlalchemy 
+dotenv 
+os
