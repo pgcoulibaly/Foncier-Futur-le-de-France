@@ -5,3 +5,4 @@ numpy
 sqlalchemy 
 dotenv 
 os
+psycopg2
