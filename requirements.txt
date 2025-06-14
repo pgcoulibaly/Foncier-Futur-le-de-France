@@ -11,3 +11,5 @@ request
 streamlit
 streamlit_folium
 folium
+fastapi
+httpx
