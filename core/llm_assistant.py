@@ -1,8 +1,6 @@
 from together import Together
-import os
-from dotenv import load_dotenv
-# # Charger les variables d'environnement depuis .env
-load_dotenv()
+
+
 
 from core.stat_compute import (
     prix_m2_moyen_par_type,
@@ -14,17 +12,19 @@ from core.stat_compute import (
 )
 
 # Instancier le client Together (il prend la clé API via TOGETHER_API_KEY automatiquement ou tu peux la passer en argument)
-client = Together()
 
-def analyse_biens_par_llm(biens: list[dict], rayon_m: int) -> str:
+
+def analyse_biens_par_llm(biens: list[dict], rayon_m: int,api_key: str ) -> str:
     """
     Calcule les statistiques des biens et génère une analyse via Llama 3.3 70B sur Together.ai.
 
     :param biens: Liste de biens (dictionnaires)
     :param rayon_m: Rayon choisi en mètres
+    :param api_key: api_key 
     :return: Analyse textuelle générée
     """
     try:
+        client = Together(api_key)
         # Calcul des statistiques
         stats = {
             "nombre_biens": nombre_biens_par_type(biens),
