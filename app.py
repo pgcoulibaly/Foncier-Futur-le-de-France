@@ -5,8 +5,8 @@ from fastapi.responses import JSONResponse
 import os
 from core.geocod import geocode_ban, haversine_distance
 from core.llm_assistant import analyse_biens_par_llm
-
-
+from dotenv import load_dotenv
+load_dotenv()
 app = FastAPI()
 
 
@@ -20,6 +20,8 @@ app.add_middleware(
 # Connexion DB
 DATABASE_URL = os.getenv("NEON_DB_URL")
 engine = create_engine(DATABASE_URL)
+#together api key
+TOGETHER_API_KEY =os.getenv("TOGETHER_API_KEY")
 
 
 
@@ -50,7 +52,7 @@ def biens_proches(adresse: str = Query(..., description="Adresse en ile de Franc
                 })
     
     # Appel de ta fonction d'analyse importée
-    analyse = analyse_biens_par_llm(biens, rayon_m)
+    analyse = analyse_biens_par_llm(biens, rayon_m,TOGETHER_API_KEY)
 
     return {
         "biens_proches": biens,
