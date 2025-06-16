@@ -3,13 +3,12 @@ from sqlalchemy import create_engine, text
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
-from dotenv import load_dotenv
 from core.geocod import geocode_ban, haversine_distance
 from core.llm_assistant import analyse_biens_par_llm
 
-load_dotenv()
 
 app = FastAPI()
+
 
 app.add_middleware(
     CORSMiddleware,
