@@ -34,6 +34,7 @@ def analyse_biens_par_llm(biens: list[dict], rayon_m: int) -> str:
             "surface_moyenne": surface_moyenne_par_type(biens),
             "nombre_pieces_moyen": nombre_pieces_moyen_par_type(biens)
         }
+        
 
         # Générer le prompt
         prompt = formater_prompt(stats, rayon_m)
@@ -44,7 +45,11 @@ def analyse_biens_par_llm(biens: list[dict], rayon_m: int) -> str:
             messages=[
                 {"role": "system", "content": "Tu es un expert en analyse immobilière."},
                 {"role": "user", "content": prompt}
-            ]
+            ],
+            temperature=0.5,
+            top_p=0.95,
+            max_tokens=1024,
+            repetition_penalty=1.1
         )
 
         return response.choices[0].message.content.strip()
@@ -54,17 +59,25 @@ def analyse_biens_par_llm(biens: list[dict], rayon_m: int) -> str:
 
 def formater_prompt(stats: dict, rayon_m: int) -> str:
     """
-    Formate les stats pour le prompt LLM.
+    Formate les stats pour le prompt LLM avec un commentaire factuel détaillé incluant le nombre total de biens et la répartition.
+    Si aucun bien n'est trouvé, génère un message simple sans analyse.
 
     :param stats: Stats calculées
     :param rayon_m: Rayon en mètres
     :return: Texte du prompt
     """
     parts = []
+    nombre_biens_par_type = stats.get("nombre_biens", {}) or {}
+    total_biens = sum(nombre_biens_par_type.values())
+
+    # Répartition par type
+    repartition = "\n".join([f"- {t} : {n} bien(s)" for t, n in nombre_biens_par_type.items()])
+
+    # Stats détaillées
     for t in stats.get("prix_m2_moyen", {}).keys():
         parts.append(
             f"{t} :\n"
-            f"- Nombre de biens : {stats['nombre_biens'].get(t)}\n"
+            f"- Nombre de biens : {nombre_biens_par_type.get(t, 0)}\n"
             f"- Prix moyen au m² : {stats['prix_m2_moyen'].get(t)} €\n"
             f"- Prix max au m² : {stats['prix_m2_max'].get(t)} €\n"
             f"- Prix min au m² : {stats['prix_m2_min'].get(t)} €\n"
@@ -72,58 +85,16 @@ def formater_prompt(stats: dict, rayon_m: int) -> str:
             f"- Nombre de pièces moyen : {stats['nombre_pieces_moyen'].get(t)}\n"
         )
 
-    if not parts:
-        return f"Aucune donnée disponible dans un rayon de {rayon_m} mètres."
-
     return (
-        f"Voici un résumé des biens vendus dans un rayon de {rayon_m} mètres :\n\n"
+        f"Voici un résumé détaillé des biens vendus dans un rayon de {rayon_m} mètres :\n\n"
+        f"Nombre total de biens : {total_biens}\n"
+        f"Répartition par type :\n{repartition}\n\n"
         + "\n".join(parts) +
-        "\n\nPour **chaque type de bien séparément**, donne un commentaire sur les prix, les surfaces et les tendances. "
-        "Ne compare pas les types de biens entre eux."
+        "\n\nÀ partir de ces statistiques, rédige un commentaire détaillé pour chaque type de bien. "
+        "Tu dois présenter les prix en insistant sur l'écart entre le minimum, la moyenne et le maximum. "
+        "Commente également les surfaces et le nombre moyen de pièces, en montrant ce que ces chiffres indiquent sur les biens observés. "
+        "Ne fais aucune supposition extérieure : ne parle pas d'équipements, d'environnement, de qualité ou de demande. "
+        "Ne fais strictement aucune comparaison avec d'autres secteurs ou périodes. "
+        "Limite-toi à analyser les chiffres et à les expliquer de façon précise et complète."
+        "Si le nombre de bien est de 0 reponds qu il y'a pas de vendu en 2024 dans le rayon choisi et limite toi à ça"
     )
-
-biens = [
-    {
-        "latitude": 48.85,
-        "longitude": 2.35,
-        "prix_m2": 5200,
-        "type_local": "Appartement",
-        "date_mutation": "2024-04-10",
-        "surface_reelle_bati": 65,
-        "id_mutation": 1001,
-        "nombre_pieces_principales": 3
-    },
-    {
-        "latitude": 48.86,
-        "longitude": 2.36,
-        "prix_m2": 5500,
-        "type_local": "Appartement",
-        "date_mutation": "2024-05-12",
-        "surface_reelle_bati": 70,
-        "id_mutation": 1002,
-        "nombre_pieces_principales": 4
-    },
-    {
-        "latitude": 48.87,
-        "longitude": 2.37,
-        "prix_m2": 4500,
-        "type_local": "Maison",
-        "date_mutation": "2024-03-18",
-        "surface_reelle_bati": 120,
-        "id_mutation": 1003,
-        "nombre_pieces_principales": 5
-    },
-    {
-        "latitude": 48.88,
-        "longitude": 2.38,
-        "prix_m2": 4700,
-        "type_local": "Maison",
-        "date_mutation": "2024-04-25",
-        "surface_reelle_bati": 130,
-        "id_mutation": 1004,
-        "nombre_pieces_principales": 6
-    }
-]
-
-
-analyse_biens_par_llm(biens, 500)
