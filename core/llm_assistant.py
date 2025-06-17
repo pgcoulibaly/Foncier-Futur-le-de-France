@@ -14,17 +14,17 @@ from core.stat_compute import (
 # Instancier le client Together (il prend la clé API via TOGETHER_API_KEY automatiquement ou tu peux la passer en argument)
 
 
-def analyse_biens_par_llm(biens: list[dict], rayon_m: int,api_key: str ) -> str:
+def analyse_biens_par_llm(biens: list[dict], rayon_m: int,param: dict) -> str:
     """
     Calcule les statistiques des biens et génère une analyse via Llama 3.3 70B sur Together.ai.
 
     :param biens: Liste de biens (dictionnaires)
     :param rayon_m: Rayon choisi en mètres
-    :param api_key: api_key 
+    :param param: engine et logger 
     :return: Analyse textuelle générée
     """
     try:
-        client = Together(api_key)
+        client = Together()
         # Calcul des statistiques
         stats = {
             "nombre_biens": nombre_biens_par_type(biens),
@@ -46,16 +46,17 @@ def analyse_biens_par_llm(biens: list[dict], rayon_m: int,api_key: str ) -> str:
                 {"role": "system", "content": "Tu es un expert en analyse immobilière."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.5,
+            temperature=0.2,
             top_p=0.95,
-            max_tokens=1024,
-            repetition_penalty=1.1
+            max_tokens=300,
+            repetition_penalty=1
         )
 
         return response.choices[0].message.content.strip()
 
     except Exception as e:
-        return f"Erreur lors de l'analyse : {str(e)}"
+        param["logger"].error(f"Erreur analyse LLM: {e}")
+        return "Analyse indisponible temporairement."
 
 def formater_prompt(stats: dict, rayon_m: int) -> str:
     """
@@ -90,11 +91,10 @@ def formater_prompt(stats: dict, rayon_m: int) -> str:
         f"Nombre total de biens : {total_biens}\n"
         f"Répartition par type :\n{repartition}\n\n"
         + "\n".join(parts) +
-        "\n\nÀ partir de ces statistiques, rédige un commentaire détaillé pour chaque type de bien. "
-        "Tu dois présenter les prix en insistant sur l'écart entre le minimum, la moyenne et le maximum. "
-        "Commente également les surfaces et le nombre moyen de pièces, en montrant ce que ces chiffres indiquent sur les biens observés. "
-        "Ne fais aucune supposition extérieure : ne parle pas d'équipements, d'environnement, de qualité ou de demande. "
-        "Ne fais strictement aucune comparaison avec d'autres secteurs ou périodes. "
-        "Limite-toi à analyser les chiffres et à les expliquer de façon précise et complète."
-        "Si le nombre de bien est de 0 reponds qu il y'a pas de vendu en 2024 dans le rayon choisi et limite toi à ça"
+       "\n\nAnalyse factuelle en 4-5 phrases :\n"
+    "• Prix par type : écarts min/max/moyen et ce qu'ils révèlent\n"
+    "• Surfaces et pièces : interprétation des moyennes observées\n"
+    "• Traite chaque type séparément, aucune comparaison entre types\n"
+    "• Reste sur les données uniquement, aucune supposition externe\n"
+    "• Si 0 bien : 'Aucun bien vendu en 2024 dans ce rayon'"
     )
