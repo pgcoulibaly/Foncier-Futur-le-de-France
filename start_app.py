@@ -16,7 +16,7 @@ class AppManager:
         
     def start_api(self):
         """Démarre l'API FastAPI avec rechargement automatique"""
-        print("🚀 Démarrage de l'API FastAPI avec auto-reload...")
+        print("Démarrage de l'API FastAPI avec auto-reload...")
         
         # Commande avec rechargement automatique optimisé
         cmd = [
@@ -35,7 +35,7 @@ class AppManager:
     
     def start_streamlit(self):
         """Démarre Streamlit avec rechargement automatique"""
-        print("📱 Démarrage de Streamlit avec auto-reload...")
+        print("Démarrage de Streamlit avec auto-reload...")
         
         # Streamlit a déjà le rechargement automatique intégré
         cmd = [
@@ -51,7 +51,7 @@ class AppManager:
     
     def stop_all(self):
         """Arrête proprement tous les processus"""
-        print("🔄 Arrêt des applications...")
+        print("Arrêt des applications...")
         
         processes = [self.api_process, self.streamlit_process]
         
@@ -72,9 +72,9 @@ class AppManager:
                         process.kill()
                         
                 except Exception as e:
-                    print(f"⚠️ Erreur lors de l'arrêt: {e}")
+                    print(f"Erreur lors de l'arrêt: {e}")
         
-        print("✅ Applications arrêtées proprement")
+        print("Applications arrêtées proprement")
 
 def main():
     """Fonction principale avec gestion des erreurs"""
@@ -91,12 +91,12 @@ def main():
         manager.start_streamlit()
         
         print("\n" + "="*50)
-        print("🎉 APPLICATIONS DÉMARRÉES AVEC AUTO-RELOAD")
+        print("APPLICATIONS DÉMARRÉES AVEC AUTO-RELOAD")
         print("="*50)
-        print("📡 API FastAPI: http://localhost:8000")
-        print("📱 Streamlit: http://localhost:8501")
-        print("🔄 Modifications détectées automatiquement")
-        print("❌ Ctrl+C pour arrêter")
+        print("API FastAPI: http://localhost:8000")
+        print("Streamlit: http://localhost:8501")
+        print("Modifications détectées automatiquement")
+        print("Ctrl+C pour arrêter")
         print("="*50 + "\n")
         
         # Attendre que l'utilisateur interrompe
@@ -104,19 +104,19 @@ def main():
             while True:
                 # Vérifier que les processus tournent encore
                 if manager.api_process and manager.api_process.poll() is not None:
-                    print("❌ L'API s'est arrêtée inopinément")
+                    print("L'API s'est arrêtée inopinément")
                     break
                 if manager.streamlit_process and manager.streamlit_process.poll() is not None:
-                    print("❌ Streamlit s'est arrêté inopinément")
+                    print("Streamlit s'est arrêté inopinément")
                     break
                 
                 time.sleep(1)
                 
         except KeyboardInterrupt:
-            print("\n❌ Arrêt demandé par l'utilisateur")
+            print("\nArrêt demandé par l'utilisateur")
             
     except Exception as e:
-        print(f"💥 Erreur: {e}")
+        print(f"Erreur: {e}")
         
     finally:
         manager.stop_all()
