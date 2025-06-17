@@ -11,7 +11,6 @@ from core.stat_compute import (
     nombre_biens_par_type
 )
 
-# Instancier le client Together (il prend la clé API via TOGETHER_API_KEY automatiquement ou tu peux la passer en argument)
 
 
 def analyse_biens_par_llm(biens: list[dict], rayon_m: int,param: dict) -> str:
