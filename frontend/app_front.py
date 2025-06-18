@@ -519,7 +519,7 @@ if st.session_state.biens:
     # Bouton pour lancer l'analyse streaming
     if not st.session_state.analysis_done:
         if st.button("Lancer l'analyse IA", type="primary"):
-            with st.spinner("Lancement de l'analyse..."):
+            with st.spinner("Analyse en cours..."):
                 current_search = st.session_state.current_search
                 stream_analysis_sync(
                     current_search.get("adresse", adresse), 
