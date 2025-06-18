@@ -72,6 +72,25 @@ st.markdown("""
         background: #f8d7da;
         color: #721c24;
     }
+    
+    .element-container {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .stAlert {
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    div[data-testid="stEmpty"] {
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    div[data-testid="stEmpty"]:empty {
+        display: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -83,10 +102,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Fonction de streaming sans threads
-def stream_analysis_sync(adresse, rayon, placeholder):
+# Fonction de streaming avec sauvegarde du contenu
+def stream_analysis_with_save(adresse, rayon, placeholder):
     """
-    Version synchrone du streaming qui fonctionne avec Streamlit
+    Version synchrone du streaming qui sauvegarde le contenu
     """
     try:
         # Affichage initial
@@ -106,12 +125,14 @@ def stream_analysis_sync(adresse, rayon, placeholder):
         )
         
         if response.status_code != 200:
-            placeholder.markdown("""
+            error_content = """
             <div class="streaming-analysis analysis-error">
                 <h4>Erreur de connexion</h4>
                 <p>Impossible de se connecter au service d'analyse</p>
             </div>
-            """, unsafe_allow_html=True)
+            """
+            placeholder.markdown(error_content, unsafe_allow_html=True)
+            st.session_state.analysis_content = error_content
             return
         
         full_content = ""
@@ -122,62 +143,83 @@ def stream_analysis_sync(adresse, rayon, placeholder):
                     data = json.loads(line[6:])  # Enlever "data: "
                     
                     if data['type'] == 'start':
-                        placeholder.markdown(f"""
+                        start_content = f"""
                         <div class="streaming-analysis">
                             <h4>Analyse IA en cours...</h4>
                             <p>{data['content']}<span class="streaming-cursor"></span></p>
                         </div>
-                        """, unsafe_allow_html=True)
+                        """
+                        placeholder.markdown(start_content, unsafe_allow_html=True)
                     
                     elif data['type'] == 'content':
                         full_content += data['content']
                         # Mise à jour en temps réel
-                        placeholder.markdown(f"""
+                        streaming_content = f"""
                         <div class="streaming-analysis">
                             <h4>Analyse IA</h4>
                             <div style="white-space: pre-wrap;">{full_content}<span class="streaming-cursor"></span></div>
                         </div>
-                        """, unsafe_allow_html=True)
+                        """
+                        placeholder.markdown(streaming_content, unsafe_allow_html=True)
                         
                         # Petit délai pour voir l'effet streaming
                         time.sleep(0.1)
                     
                     elif data['type'] == 'end':
                         # Analyse terminée
-                        placeholder.markdown(f"""
+                        final_content = f"""
                         <div class="streaming-analysis analysis-complete">
                             <h4>Analyse IA terminée</h4>
                             <div style="white-space: pre-wrap;">{full_content}</div>
                         </div>
-                        """, unsafe_allow_html=True)
+                        """
+                        placeholder.markdown(final_content, unsafe_allow_html=True)
+                        # Sauvegarder le contenu final
+                        st.session_state.analysis_content = final_content
                         break
                     
                     elif data['type'] == 'error':
-                        placeholder.markdown(f"""
+                        error_content = f"""
                         <div class="streaming-analysis analysis-error">
                             <h4>Erreur</h4>
                             <p>{data['content']}</p>
                         </div>
-                        """, unsafe_allow_html=True)
+                        """
+                        placeholder.markdown(error_content, unsafe_allow_html=True)
+                        st.session_state.analysis_content = error_content
                         break
                         
                 except json.JSONDecodeError:
                     continue
                     
     except requests.exceptions.RequestException as e:
-        placeholder.markdown(f"""
+        error_content = f"""
         <div class="streaming-analysis analysis-error">
             <h4>Erreur de connexion</h4>
             <p>Impossible de se connecter au service d'analyse: {str(e)}</p>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        placeholder.markdown(error_content, unsafe_allow_html=True)
+        st.session_state.analysis_content = error_content
     except Exception as e:
-        placeholder.markdown(f"""
+        error_content = f"""
         <div class="streaming-analysis analysis-error">
             <h4>Erreur inattendue</h4>
             <p>{str(e)}</p>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        placeholder.markdown(error_content, unsafe_allow_html=True)
+        st.session_state.analysis_content = error_content
+
+# Fonction pour générer une clé stable pour la carte
+def get_stable_map_key():
+    """Génère une clé stable basée sur les données actuelles"""
+    if not st.session_state.get("biens", []):
+        return "empty_map"
+    
+    search_params = st.session_state.get("current_search", {})
+    data_hash = hash(f"{search_params.get('adresse', '')}_{search_params.get('rayon', 0)}_{len(st.session_state.biens)}")
+    return f"map_{data_hash}"
 
 # Sidebar pour les paramètres
 with st.sidebar:
@@ -208,14 +250,22 @@ if "analysis_done" not in st.session_state:
     st.session_state.analysis_done = False
 if "current_search" not in st.session_state:
     st.session_state.current_search = {}
+if "analysis_content" not in st.session_state:
+    st.session_state.analysis_content = None
 
 # Logique de recherche
 if rechercher:
     if not adresse:
         st.warning("Veuillez saisir une adresse pour commencer la recherche.")
     else:
-        # Réinitialiser l'état de l'analyse
+        # Réinitialiser tous les états liés à l'analyse et à la carte
+        keys_to_reset = ["analysis_done", "analysis_content"]
+        for key in keys_to_reset:
+            if key in st.session_state:
+                del st.session_state[key]
+        
         st.session_state.analysis_done = False
+        st.session_state.analysis_content = None
         st.session_state.current_search = {"adresse": adresse, "rayon": rayon}
         
         with st.spinner("Recherche des biens..."):
@@ -486,16 +536,22 @@ if st.session_state.biens:
                         tooltip=f"{bien['type_local']} - {bien['prix_m2']:,}€/m²"
                     ).add_to(m)
         
-        # Affichage de la carte
+        # Affichage de la carte avec clé stable pour éviter les reruns inutiles
+        stable_key = get_stable_map_key()
         map_data = st_folium(
             m, 
             width=700, 
             height=500,
-            returned_objects=["last_object_clicked"],
-            key="main_map"
+            returned_objects=[],  # Aucun rerun lors des clics
+            key=stable_key
         )
         
-        st.info(f"Zone fixée sur {rayon}m autour de: {adresse[:50]}{'...' if len(adresse) > 50 else ''}")
+        st.markdown(f"""
+        <div style="background-color: #e1f5fe; padding: 0.5rem; border-radius: 0.25rem; 
+                    border-left: 4px solid #0288d1; margin: 0.5rem 0 0.5rem 0;">
+            <small><strong>Zone fixée sur {rayon}m autour de:</strong> {adresse[:50]}{'...' if len(adresse) > 50 else ''}</small>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col_chart:
         st.subheader("Analyse des prix")
@@ -513,20 +569,47 @@ if st.session_state.biens:
     # Section pour l'analyse streaming
     st.subheader("Analyse IA du marché local")
     
-    # Placeholder pour l'analyse
-    analysis_placeholder = st.empty()
+    # Bouton compact au-dessus de l'analyse
+    col_button, col_spacer = st.columns([1, 3])
     
-    # Bouton pour lancer l'analyse streaming
-    if not st.session_state.analysis_done:
-        if st.button("Lancer l'analyse IA", type="primary"):
-            with st.spinner("Lancement de l'analyse..."):
-                current_search = st.session_state.current_search
-                stream_analysis_sync(
-                    current_search.get("adresse", adresse), 
-                    current_search.get("rayon", rayon), 
-                    analysis_placeholder
-                )
-                st.session_state.analysis_done = True
+    with col_button:
+        if not st.session_state.get("analysis_done", False):
+            button_text = "Lancer l'analyse IA"
+            button_type = "primary"
+        else:
+            button_text = "Relancer"
+            button_type = "secondary"
+        
+        launch_analysis = st.button(button_text, type=button_type)
+    
+    # Gestion conditionnelle du placeholder
+    if st.session_state.get("analysis_content"):
+        analysis_placeholder = st.empty()
+        analysis_placeholder.markdown(st.session_state.analysis_content, unsafe_allow_html=True)
+    elif launch_analysis:
+        analysis_placeholder = st.empty()
+    else:
+        analysis_placeholder = None
+    
+    # Traitement du clic sur le bouton
+    if launch_analysis:
+        # Réinitialiser le contenu précédent
+        st.session_state.analysis_content = None
+        
+        if analysis_placeholder is None:
+            analysis_placeholder = st.empty()
+        
+        with st.spinner("Analyse en cours..."):
+            current_search = st.session_state.get("current_search", {})
+            
+            stream_analysis_with_save(
+                current_search.get("adresse", adresse), 
+                current_search.get("rayon", rayon), 
+                analysis_placeholder
+            )
+            
+            # Marquer comme terminé
+            st.session_state.analysis_done = True
     
     # Tableau des données
     with st.expander("Voir le détail des biens"):
