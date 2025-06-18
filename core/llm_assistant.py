@@ -1,7 +1,6 @@
 from together import Together
-
-
-
+from typing import AsyncGenerator
+import asyncio
 from core.stat_compute import (
     prix_m2_moyen_par_type,
     prix_m2_max_par_type,
@@ -11,20 +10,13 @@ from core.stat_compute import (
     nombre_biens_par_type
 )
 
-
-
-def analyse_biens_par_llm(biens: list[dict], rayon_m: int,param: dict) -> str:
+def analyse_biens_par_llm(biens: list[dict], rayon_m: int, param: dict) -> str:
     """
-    Calcule les statistiques des biens et génère une analyse via Llama 3.3 70B sur Together.ai.
-
-    :param biens: Liste de biens (dictionnaires)
-    :param rayon_m: Rayon choisi en mètres
-    :param param: engine et logger 
-    :return: Analyse textuelle générée
+    Version originale non-streaming (conservée pour compatibilité)
     """
     try:
         client = Together()
-        # Calcul des statistiques
+        # Calcul des statistiques (logique conservée)
         stats = {
             "nombre_biens": nombre_biens_par_type(biens),
             "prix_m2_moyen": prix_m2_moyen_par_type(biens),
@@ -34,8 +26,7 @@ def analyse_biens_par_llm(biens: list[dict], rayon_m: int,param: dict) -> str:
             "nombre_pieces_moyen": nombre_pieces_moyen_par_type(biens)
         }
         
-
-        # Générer le prompt
+        # Générer le prompt (fonction conservée)
         prompt = formater_prompt(stats, rayon_m)
 
         # Appel API via Together SDK
@@ -56,6 +47,100 @@ def analyse_biens_par_llm(biens: list[dict], rayon_m: int,param: dict) -> str:
     except Exception as e:
         param["logger"].error(f"Erreur analyse LLM: {e}")
         return "Analyse indisponible temporairement."
+
+async def analyse_biens_par_llm_stream(biens: list[dict], rayon_m: int, param: dict) -> AsyncGenerator[str, None]:
+    """
+    Version streaming de l'analyse LLM avec Together.ai
+    Conserve exactement la même logique de calcul des statistiques
+    
+    :param biens: Liste de biens 
+    :param rayon_m: Rayon choisi en mètres
+    :param param: engine et logger 
+    :yield: Chunks de texte au fur et à mesure de la génération
+    """
+    try:
+        # Calcul des statistiques sur TOUS les biens (logique identique)
+        stats = {
+            "nombre_biens": nombre_biens_par_type(biens),
+            "prix_m2_moyen": prix_m2_moyen_par_type(biens),
+            "prix_m2_max": prix_m2_max_par_type(biens),
+            "prix_m2_min": prix_m2_min_par_type(biens),
+            "surface_moyenne": surface_moyenne_par_type(biens),
+            "nombre_pieces_moyen": nombre_pieces_moyen_par_type(biens)
+        }
+        
+        # Générer le prompt (fonction conservée exactement)
+        prompt = formater_prompt(stats, rayon_m)
+        
+        param["logger"].info(f"Analyse streaming démarrée pour {len(biens)} biens")
+        
+        # Utilisation de Together.ai en mode streaming
+        try:
+            # Tentative d'utilisation du streaming natif de Together
+            # Note: Vérifiez si Together supporte le streaming dans votre version
+            client = Together()
+            
+            response = client.chat.completions.create(
+                model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+                messages=[
+                    {"role": "system", "content": "Tu es un expert en analyse immobilière."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.2,
+                top_p=0.95,
+                max_tokens=300,
+                repetition_penalty=1,
+                stream=True  # Activation du streaming si supporté
+            )
+            
+            # Streaming des chunks
+            for chunk in response:
+                if hasattr(chunk, 'choices') and chunk.choices:
+                    if hasattr(chunk.choices[0], 'delta') and chunk.choices[0].delta:
+                        if hasattr(chunk.choices[0].delta, 'content') and chunk.choices[0].delta.content:
+                            yield chunk.choices[0].delta.content
+                            await asyncio.sleep(0.01)  # Délai pour un streaming naturel
+                            
+        except Exception as streaming_error:
+            # Fallback : simulation de streaming avec la réponse complète
+            param["logger"].warning(f"Streaming natif indisponible, simulation: {streaming_error}")
+            
+            client = Together()
+            response = client.chat.completions.create(
+                model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+                messages=[
+                    {"role": "system", "content": "Tu es un expert en analyse immobilière."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.2,
+                top_p=0.95,
+                max_tokens=300,
+                repetition_penalty=1
+            )
+            
+            # Simulation de streaming en découpant la réponse
+            full_content = response.choices[0].message.content.strip()
+            
+            # Découpage par mots pour simuler un streaming naturel
+            words = full_content.split(' ')
+            current_chunk = ""
+            
+            for word in words:
+                current_chunk += word + " "
+                
+                # Envoyer un chunk tous les 3-5 mots
+                if len(current_chunk.split()) >= 4:
+                    yield current_chunk
+                    current_chunk = ""
+                    await asyncio.sleep(0.05)  # Délai pour simuler la génération
+            
+            # Envoyer le reste s'il y en a
+            if current_chunk.strip():
+                yield current_chunk
+
+    except Exception as e:
+        param["logger"].error(f"Erreur analyse LLM streaming: {e}")
+        yield f"\n\n Erreur lors de l'analyse : Analyse indisponible temporairement."
 
 def formater_prompt(stats: dict, rayon_m: int) -> str:
     """
