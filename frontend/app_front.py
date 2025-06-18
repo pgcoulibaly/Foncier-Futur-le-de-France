@@ -4,8 +4,10 @@ from streamlit_folium import st_folium
 import folium
 import plotly.express as px
 import pandas as pd
+import json
+import time
 
-# Configuration de la page avec un thème personnalisé
+# Configuration de la page
 st.set_page_config(
     page_title="Immobilier Île-de-France", 
     layout="wide",
@@ -13,7 +15,7 @@ st.set_page_config(
     page_icon="🏠"
 )
 
-# CSS personnalisé pour l'esthétique
+# CSS personnalisé
 st.markdown("""
 <style>
     .main-header {
@@ -26,23 +28,6 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     
-    .metric-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        border-left: 4px solid #667eea;
-        margin-bottom: 1rem;
-    }
-    
-    .search-container {
-        background: #f8f9fa;
-        padding: 2rem;
-        border-radius: 10px;
-        margin-bottom: 2rem;
-        border: 1px solid #e9ecef;
-    }
-    
     .analysis-card {
         background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         padding: 2rem;
@@ -52,35 +37,40 @@ st.markdown("""
         border-left: 4px solid #28a745;
     }
     
-    .stButton > button {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 25px;
-        padding: 0.5rem 2rem;
-        font-weight: bold;
-        transition: all 0.3s ease;
+    .streaming-analysis {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        min-height: 100px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.5;
     }
     
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    .streaming-cursor {
+        display: inline-block;
+        width: 2px;
+        height: 1.2em;
+        background-color: #667eea;
+        animation: blink 1s infinite;
+        margin-left: 2px;
     }
     
-    /* Correction de l'espacement */
-    .element-container {
-        margin-bottom: 1rem !important;
+    @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
     }
     
-    /* Réduction des marges par défaut de Streamlit */
-    .block-container {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
+    .analysis-complete {
+        border-left: 4px solid #28a745;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     }
     
-    /* Espacement des sections */
-    .stMarkdown {
-        margin-bottom: 0.5rem !important;
+    .analysis-error {
+        border-left: 4px solid #dc3545;
+        background: #f8d7da;
+        color: #721c24;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -93,11 +83,106 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# Fonction de streaming sans threads
+def stream_analysis_sync(adresse, rayon, placeholder):
+    """
+    Version synchrone du streaming qui fonctionne avec Streamlit
+    """
+    try:
+        # Affichage initial
+        placeholder.markdown("""
+        <div class="streaming-analysis">
+            <h4>Connexion au service d'analyse...</h4>
+            <p>Initialisation en cours<span class="streaming-cursor"></span></p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Requête streaming
+        response = requests.get(
+            "http://localhost:8000/analyse_stream",
+            params={"adresse": adresse, "rayon_m": rayon},
+            stream=True,
+            timeout=60
+        )
+        
+        if response.status_code != 200:
+            placeholder.markdown("""
+            <div class="streaming-analysis analysis-error">
+                <h4>Erreur de connexion</h4>
+                <p>Impossible de se connecter au service d'analyse</p>
+            </div>
+            """, unsafe_allow_html=True)
+            return
+        
+        full_content = ""
+        
+        for line in response.iter_lines(decode_unicode=True):
+            if line and line.startswith("data: "):
+                try:
+                    data = json.loads(line[6:])  # Enlever "data: "
+                    
+                    if data['type'] == 'start':
+                        placeholder.markdown(f"""
+                        <div class="streaming-analysis">
+                            <h4>Analyse IA en cours...</h4>
+                            <p>{data['content']}<span class="streaming-cursor"></span></p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    elif data['type'] == 'content':
+                        full_content += data['content']
+                        # Mise à jour en temps réel
+                        placeholder.markdown(f"""
+                        <div class="streaming-analysis">
+                            <h4>Analyse IA</h4>
+                            <div style="white-space: pre-wrap;">{full_content}<span class="streaming-cursor"></span></div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Petit délai pour voir l'effet streaming
+                        time.sleep(0.1)
+                    
+                    elif data['type'] == 'end':
+                        # Analyse terminée
+                        placeholder.markdown(f"""
+                        <div class="streaming-analysis analysis-complete">
+                            <h4>Analyse IA terminée</h4>
+                            <div style="white-space: pre-wrap;">{full_content}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        break
+                    
+                    elif data['type'] == 'error':
+                        placeholder.markdown(f"""
+                        <div class="streaming-analysis analysis-error">
+                            <h4>Erreur</h4>
+                            <p>{data['content']}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        break
+                        
+                except json.JSONDecodeError:
+                    continue
+                    
+    except requests.exceptions.RequestException as e:
+        placeholder.markdown(f"""
+        <div class="streaming-analysis analysis-error">
+            <h4>Erreur de connexion</h4>
+            <p>Impossible de se connecter au service d'analyse: {str(e)}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    except Exception as e:
+        placeholder.markdown(f"""
+        <div class="streaming-analysis analysis-error">
+            <h4>Erreur inattendue</h4>
+            <p>{str(e)}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
 # Sidebar pour les paramètres
 with st.sidebar:
     st.header("Paramètres de recherche")
     
-    # Formulaire dans la sidebar
     adresse = st.text_input(
         "Adresse", 
         placeholder="Ex: 1 Place de la République, Paris",
@@ -114,33 +199,28 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    
-    # Bouton de recherche stylisé
     rechercher = st.button("Lancer la recherche", use_container_width=True)
-    
-    # Informations sur l'app
-    st.markdown("---")
-    st.markdown("""
-    ### À propos
-    Cette application vous permet de :
-    - Visualiser les biens sur une carte
-    - Analyser le marché local
-    - Obtenir une analyse IA personnalisée
-    """)
 
 # Initialisation des états de session
 if "biens" not in st.session_state:
     st.session_state.biens = []
-if "analyse" not in st.session_state:
-    st.session_state.analyse = ""
+if "analysis_done" not in st.session_state:
+    st.session_state.analysis_done = False
+if "current_search" not in st.session_state:
+    st.session_state.current_search = {}
 
 # Logique de recherche
 if rechercher:
     if not adresse:
         st.warning("Veuillez saisir une adresse pour commencer la recherche.")
     else:
-        with st.spinner("Recherche en cours..."):
+        # Réinitialiser l'état de l'analyse
+        st.session_state.analysis_done = False
+        st.session_state.current_search = {"adresse": adresse, "rayon": rayon}
+        
+        with st.spinner("Recherche des biens..."):
             try:
+                # Appel à l'endpoint des données de base
                 res = requests.get("http://localhost:8000/biens_proches", params={
                     "adresse": adresse,
                     "rayon_m": rayon
@@ -149,10 +229,7 @@ if rechercher:
                 data = res.json()
 
                 biens = data.get("biens_proches", [])
-                analyse = data.get("analyse", "Aucune analyse fournie.")
-
                 st.session_state.biens = biens
-                st.session_state.analyse = analyse
 
                 if not biens:
                     st.info("Aucun bien trouvé dans ce rayon. Essayez d'augmenter le périmètre de recherche.")
@@ -168,7 +245,6 @@ if st.session_state.biens:
     # Métriques principales
     st.subheader("Aperçu du marché")
     
-    # Calcul des statistiques
     df_biens = pd.DataFrame(st.session_state.biens)
     prix_moyen = df_biens['prix_m2'].mean()
     surface_moyenne = df_biens['surface_reelle_bati'].mean()
@@ -257,8 +333,8 @@ if st.session_state.biens:
             fill=True,
             fillColor='#ff6b35',
             fillOpacity=0.1,
-            popup=f"Zone de recherche: {rayon}m )",
-            tooltip=f"Rayon affiché: {rayon}m "
+            popup=f"Zone de recherche: {rayon}m",
+            tooltip=f"Rayon affiché: {rayon}m"
         ).add_to(m)
         
         # Groupement des biens par coordonnées pour gérer les doublons
@@ -334,14 +410,17 @@ if st.session_state.biens:
                 
                 for j, (i, bien) in enumerate(biens_list):
                     if bien["prix_m2"] > prix_moyens_adresse * 1.1:
-                        price_indicator = "🔴"
+                        price_indicator = "•"
+                        border_color = "#ff4444"
                     elif bien["prix_m2"] < prix_moyens_adresse * 0.9:
-                        price_indicator = "🟢"
+                        price_indicator = "•"
+                        border_color = "#44ff44"
                     else:
-                        price_indicator = "🔵"
+                        price_indicator = "•"
+                        border_color = "#4444ff"
                     
                     popup_content += f"""
-                    <div style="background: #f8f9fa; padding: 6px; border-radius: 3px; margin: 3px 0; border-left: 3px solid {'#ff4444' if bien['prix_m2'] > prix_moyens_adresse * 1.1 else '#44ff44' if bien['prix_m2'] < prix_moyens_adresse * 0.9 else '#4444ff'};">
+                    <div style="background: #f8f9fa; padding: 6px; border-radius: 3px; margin: 3px 0; border-left: 3px solid {border_color};">
                         <p style="margin: 1px 0; font-weight: bold;">{price_indicator} {bien["type_local"]} #{i+1}</p>
                         <p style="margin: 1px 0; font-size: 12px;"><strong>Prix:</strong> {bien["prix_m2"]:,} €/m²</p>
                         <p style="margin: 1px 0; font-size: 12px;"><strong>Surface:</strong> {bien["surface_reelle_bati"]} m² | <strong>Pièces:</strong> {bien["nombre_pieces_principales"]}</p>
@@ -384,13 +463,10 @@ if st.session_state.biens:
                     # Couleur selon le prix individuel
                     if bien["prix_m2"] > prix_moyen * 1.2:
                         color = 'red'
-                        icon = 'arrow-up'
                     elif bien["prix_m2"] < prix_moyen * 0.8:
                         color = 'green' 
-                        icon = 'arrow-down'
                     else:
                         color = 'blue'
-                        icon = 'home'
                     
                     folium.CircleMarker(
                         [offset_lat, offset_lon],
@@ -419,51 +495,38 @@ if st.session_state.biens:
             key="main_map"
         )
         
-        st.info(f"Zone fixée sur {rayon}m  autour de: {adresse[:50]}{'...' if len(adresse) > 50 else ''}")
+        st.info(f"Zone fixée sur {rayon}m autour de: {adresse[:50]}{'...' if len(adresse) > 50 else ''}")
     
     with col_chart:
         st.subheader("Analyse des prix")
         
-        # Graphique en barres des prix
         fig_prix = px.histogram(
             df_biens, 
             x='prix_m2', 
             nbins=10,
             title="Distribution des prix/m²",
-            labels={'prix_m2': 'Prix/m² (€)', 'count': 'Nombre de biens'},
             color_discrete_sequence=['#667eea']
         )
-        fig_prix.update_layout(
-            showlegend=False,
-            height=300,
-            font=dict(size=10)
-        )
+        fig_prix.update_layout(showlegend=False, height=300)
         st.plotly_chart(fig_prix, use_container_width=True)
-        
-        # Graphique surfaces vs prix
-        fig_scatter = px.scatter(
-            df_biens, 
-            x='surface_reelle_bati', 
-            y='prix_m2',
-            size='nombre_pieces_principales',
-            color='type_local',
-            title="Surface vs Prix/m²",
-            labels={
-                'surface_reelle_bati': 'Surface (m²)', 
-                'prix_m2': 'Prix/m² (€)'
-            }
-        )
-        fig_scatter.update_layout(height=300, font=dict(size=10))
-        st.plotly_chart(fig_scatter, use_container_width=True)
     
-    # Analyse IA - CORRECTION ICI : suppression du markdown "---" qui créait l'espace
-    st.markdown("""
-    <div class="analysis-card">
-        <h3>Analyse IA du marché local</h3>
-    </div>
-    """, unsafe_allow_html=True)
+    # Section pour l'analyse streaming
+    st.subheader("Analyse IA du marché local")
     
-    st.markdown(st.session_state.analyse)
+    # Placeholder pour l'analyse
+    analysis_placeholder = st.empty()
+    
+    # Bouton pour lancer l'analyse streaming
+    if not st.session_state.analysis_done:
+        if st.button("Lancer l'analyse IA", type="primary"):
+            with st.spinner("Lancement de l'analyse..."):
+                current_search = st.session_state.current_search
+                stream_analysis_sync(
+                    current_search.get("adresse", adresse), 
+                    current_search.get("rayon", rayon), 
+                    analysis_placeholder
+                )
+                st.session_state.analysis_done = True
     
     # Tableau des données
     with st.expander("Voir le détail des biens"):
@@ -474,14 +537,7 @@ if st.session_state.biens:
         st.dataframe(
             df_display[['type_local', 'prix_m2', 'surface_reelle_bati', 
                        'nombre_pieces_principales', 'distance_m']],
-            use_container_width=True,
-            column_config={
-                "type_local": "Type",
-                "prix_m2": st.column_config.NumberColumn("Prix/m² (€)", format="%d €"),
-                "surface_reelle_bati": st.column_config.NumberColumn("Surface (m²)", format="%d m²"),
-                "nombre_pieces_principales": "Pièces",
-                "distance_m": st.column_config.NumberColumn("Distance (m)", format="%d m")
-            }
+            use_container_width=True
         )
 
 else:
