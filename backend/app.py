@@ -105,7 +105,7 @@ async def biens_proches(
 @app.get("/analyse_stream")
 async def analyse_stream(
     adresse: str = Query(..., description="Adresse en Île-de-France"),
-    rayon_m: int = Query(500, ge=100, le=10000, description="Rayon en mètres")
+    rayon_m: int = Query(500, ge=100, le=1000, description="Rayon en mètres")
 ):
     """
     Endpoint pour l'analyse LLM en streaming
@@ -133,7 +133,7 @@ async def analyse_stream(
         # Générateur pour le streaming
         async def generate_analysis():
             try:
-                start_message = "Analyse en cours..."
+                start_message = "Reflexion..."
                 yield f"data: {json.dumps({'type': 'start', 'content': start_message})}\n\n"
                 
                 # Appel de la fonction d'analyse streaming
