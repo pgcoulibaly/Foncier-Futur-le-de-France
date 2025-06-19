@@ -83,10 +83,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Fonction de streaming sans threads
+# Fonction de streaming modifiée pour sauvegarder le résultat
 def stream_analysis_sync(adresse, rayon, placeholder):
     """
-    Version synchrone du streaming qui fonctionne avec Streamlit
+    Version synchrone du streaming qui fonctionne avec Streamlit et sauvegarde le résultat
     """
     try:
         # Affichage initial
@@ -106,12 +106,16 @@ def stream_analysis_sync(adresse, rayon, placeholder):
         )
         
         if response.status_code != 200:
-            placeholder.markdown("""
+            error_content = """
             <div class="streaming-analysis analysis-error">
                 <h4>Erreur de connexion</h4>
                 <p>Impossible de se connecter au service d'analyse</p>
             </div>
-            """, unsafe_allow_html=True)
+            """
+            placeholder.markdown(error_content, unsafe_allow_html=True)
+            # Sauvegarder l'erreur et marquer comme terminé
+            st.session_state.analysis_result = error_content
+            st.session_state.analysis_completed = True
             return
         
         full_content = ""
@@ -144,40 +148,56 @@ def stream_analysis_sync(adresse, rayon, placeholder):
                     
                     elif data['type'] == 'end':
                         # Analyse terminée
-                        placeholder.markdown(f"""
+                        final_content = f"""
                         <div class="streaming-analysis analysis-complete">
                             <h4>Analyse IA terminée</h4>
                             <div style="white-space: pre-wrap;">{full_content}</div>
                         </div>
-                        """, unsafe_allow_html=True)
+                        """
+                        placeholder.markdown(final_content, unsafe_allow_html=True)
+                        # IMPORTANT: Sauvegarder le résultat et marquer comme terminé
+                        st.session_state.analysis_result = final_content
+                        st.session_state.analysis_completed = True
                         break
                     
                     elif data['type'] == 'error':
-                        placeholder.markdown(f"""
+                        error_content = f"""
                         <div class="streaming-analysis analysis-error">
                             <h4>Erreur</h4>
                             <p>{data['content']}</p>
                         </div>
-                        """, unsafe_allow_html=True)
+                        """
+                        placeholder.markdown(error_content, unsafe_allow_html=True)
+                        # Sauvegarder l'erreur et marquer comme terminé
+                        st.session_state.analysis_result = error_content
+                        st.session_state.analysis_completed = True
                         break
                         
                 except json.JSONDecodeError:
                     continue
                     
     except requests.exceptions.RequestException as e:
-        placeholder.markdown(f"""
+        error_content = f"""
         <div class="streaming-analysis analysis-error">
             <h4>Erreur de connexion</h4>
             <p>Impossible de se connecter au service d'analyse: {str(e)}</p>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        placeholder.markdown(error_content, unsafe_allow_html=True)
+        # Sauvegarder l'erreur et marquer comme terminé
+        st.session_state.analysis_result = error_content
+        st.session_state.analysis_completed = True
     except Exception as e:
-        placeholder.markdown(f"""
+        error_content = f"""
         <div class="streaming-analysis analysis-error">
             <h4>Erreur inattendue</h4>
             <p>{str(e)}</p>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        placeholder.markdown(error_content, unsafe_allow_html=True)
+        # Sauvegarder l'erreur et marquer comme terminé
+        st.session_state.analysis_result = error_content
+        st.session_state.analysis_completed = True
 
 # Sidebar pour les paramètres
 with st.sidebar:
@@ -204,8 +224,10 @@ with st.sidebar:
 # Initialisation des états de session
 if "biens" not in st.session_state:
     st.session_state.biens = []
-if "analysis_done" not in st.session_state:
-    st.session_state.analysis_done = False
+if "analysis_completed" not in st.session_state:
+    st.session_state.analysis_completed = False
+if "analysis_result" not in st.session_state:
+    st.session_state.analysis_result = ""
 if "current_search" not in st.session_state:
     st.session_state.current_search = {}
 
@@ -214,8 +236,9 @@ if rechercher:
     if not adresse:
         st.warning("Veuillez saisir une adresse pour commencer la recherche.")
     else:
-        # Réinitialiser l'état de l'analyse
-        st.session_state.analysis_done = False
+        # Réinitialiser l'état de l'analyse pour une nouvelle recherche
+        st.session_state.analysis_completed = False
+        st.session_state.analysis_result = ""
         st.session_state.current_search = {"adresse": adresse, "rayon": rayon}
         
         with st.spinner("Recherche des biens..."):
@@ -520,16 +543,25 @@ if st.session_state.biens:
     # Placeholder pour l'analyse
     analysis_placeholder = st.empty()
     
-    # Bouton pour lancer l'analyse streaming
-    if not st.session_state.analysis_done:
-        if st.button("Lancer l'analyse IA", type="primary"):
+    # Afficher le résultat sauvegardé s'il existe
+    if st.session_state.analysis_result:
+        analysis_placeholder.markdown(st.session_state.analysis_result, unsafe_allow_html=True)
+    
+    # Gestion du bouton d'analyse
+    if st.session_state.analysis_completed:
+        # Option 1: Bouton grisé (recommandé)
+        st.button(
+            "Analyse terminée", 
+            disabled=True, 
+            help="L'analyse a été effectuée. Lancez une nouvelle recherche pour relancer l'analyse.",
+            use_container_width=False
+        )
+        
+    else:
+        # Bouton normal pour lancer l'analyse
+        if st.button("Lancer l'analyse IA", type="primary", use_container_width=False):
             with st.spinner("Analyse en cours..."):
-                stream_analysis_sync(
-                    adresse_recherche, 
-                    rayon_recherche, 
-                    analysis_placeholder
-                )
-                st.session_state.analysis_done = True
+                stream_analysis_sync(adresse_recherche, rayon_recherche, analysis_placeholder)
     
     # Tableau des données
     with st.expander("Voir le détail des biens"):
