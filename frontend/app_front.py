@@ -525,6 +525,31 @@ if st.session_state.biens:
         st.info(f"Zone fixée sur {rayon_recherche}m autour de: {adresse_recherche[:50]}{'...' if len(adresse_recherche) > 50 else ''}")
     
     with col_chart:
+        # Légende minimaliste à droite de la carte, au-dessus du graphique
+        st.markdown(
+        """
+        <div style="
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            line-height: 1.4;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            grid-row-gap: 6px;
+            grid-column-gap: 8px;
+            max-width: 280px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        ">
+            <span style="width:12px; height:12px; background:red;   border-radius:50%;"></span><span><strong>Prix élevé</strong> : > 120 % du prix moyen</span>
+            <span style="width:12px; height:12px; background:blue;  border-radius:50%;"></span><span><strong>Prix moyen</strong> : 80 – 120 % du prix moyen</span>
+            <span style="width:12px; height:12px; background:green; border-radius:50%;"></span><span><strong>Prix attractif</strong> : < 80 % du prix moyen</span>
+            <span style="width:12px; height:12px; background:orange;border-radius:50%;"></span><span><strong>Adresse recherchée</strong> : point central</span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
         st.subheader("Analyse des prix")
         
         fig_prix = px.histogram(
