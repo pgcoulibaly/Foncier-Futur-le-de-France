@@ -230,6 +230,8 @@ if "analysis_result" not in st.session_state:
     st.session_state.analysis_result = ""
 if "current_search" not in st.session_state:
     st.session_state.current_search = {}
+if "stats_per_type" not in st.session_state:
+    st.session_state.stats_per_type = {}
 
 # Logique de recherche
 if rechercher:
@@ -253,6 +255,8 @@ if rechercher:
 
                 biens = data.get("biens_proches", [])
                 st.session_state.biens = biens
+                stats_per_type = data.get("stats_per_type", {})
+                st.session_state.stats_per_type = stats_per_type
 
                 if not biens:
                     st.info("Aucun bien trouvé dans ce rayon. Essayez d'augmenter le périmètre de recherche.")
@@ -398,7 +402,7 @@ if st.session_state.biens:
                     <div style="font-family: Arial; width: 220px;">
                         <h4 style="color: #667eea; margin-bottom: 8px;">{bien["type_local"]} #{i+1}</h4>
                         <div style="background: #f8f9fa; padding: 8px; border-radius: 5px; margin: 5px 0;">
-                            <p style="margin: 2px 0;"><strong>Prix:</strong> {bien["prix_m2"]:,} €/m² <em>({price_status})</em></p>
+                            <p style="margin: 2px 0;"><strong>Prix:</strong> {round(bien["prix_m2"],2):,} €/m² <em>({price_status})</em></p>
                             <p style="margin: 2px 0;"><strong>Surface:</strong> {bien["surface_reelle_bati"]} m²</p>
                             <p style="margin: 2px 0;"><strong>Pièces:</strong> {bien["nombre_pieces_principales"]}</p>
                             <p style="margin: 2px 0;"><strong>Distance:</strong> {round(bien["distance_m"])} m</p>
@@ -406,7 +410,7 @@ if st.session_state.biens:
                     </div>
                     """, max_width=250),
                     icon=folium.Icon(color=color, icon=icon, prefix='fa'),
-                    tooltip=f"{bien['type_local']} - {bien['prix_m2']:,}€/m²"
+                    tooltip=f"{bien['type_local']} - {round(bien['prix_m2'],2):,}€/m²"
                 ).add_to(m)
                 
             else:
@@ -550,18 +554,76 @@ if st.session_state.biens:
         """,
         unsafe_allow_html=True
     )
-        st.subheader("Analyse des prix")
         
-        fig_prix = px.histogram(
-            df_biens, 
-            x='prix_m2', 
-            nbins=10,
-            title="Distribution des prix/m²",
-            color_discrete_sequence=['#667eea']
-        )
-        fig_prix.update_layout(showlegend=False, height=300)
-        st.plotly_chart(fig_prix, use_container_width=True)
-    
+        if st.session_state.stats_per_type:
+            st.markdown("###### Statistiques par type de bien") 
+            
+            # Extraire les données du dictionnaire
+            stats_dict = st.session_state.stats_per_type
+            
+            # Récupérer les types de biens uniques
+            types_biens = list(stats_dict['nombre_biens_par_type'].keys())
+            
+            # Créer une liste de dictionnaires pour le DataFrame
+            data_for_df = []
+            for type_bien in types_biens:
+                data_for_df.append({
+                    'Type de bien': type_bien,
+                    'Nombre': stats_dict['nombre_biens_par_type'].get(type_bien, 0),
+                    'Prix moyen/m²': round(float(stats_dict['prix_m2_moyen_par_type'].get(type_bien, 0)),2),
+                    'Prix min/m²': round(float(stats_dict['prix_m2_min_par_type'].get(type_bien, 0)),2),
+                    'Prix max/m²': round(float(stats_dict['prix_m2_max_par_type'].get(type_bien, 0)),2),
+                    'Surface moyenne': round(float(stats_dict['surface_moyenne_par_type'].get(type_bien, 0)),2),
+                    'Nb pièces moyen': float(stats_dict['nombre_pieces_moyen_par_type'].get(type_bien, 0))
+                })
+            
+            # Créer le DataFrame
+            df_stats = pd.DataFrame(data_for_df)
+            
+            df_stats = (
+                df_stats
+                .set_index('Type de bien')      # 'Type de bien' devient index des colonnes
+                .T                              # transposition
+                .reset_index()                  # l’ancien index devient une colonne nommée 'index'
+                .rename(columns={'index': 'Type de bien'})  # on renomme 'index' en 'Type de bien'
+                )
+
+            
+            # Afficher le tableau stylisé
+            st.dataframe(
+                df_stats,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Type de bien": st.column_config.TextColumn(
+                        width="medium",
+                    ),
+                    "Nombre": st.column_config.NumberColumn(
+                        format="%d",
+                        width="small",
+                    ),
+                    "Prix moyen/m²": st.column_config.NumberColumn(
+                        format="%d €",
+                        width="small",
+                    ),
+                    "Prix min/m²": st.column_config.NumberColumn(
+                        format="%d €",
+                        width="small",
+                    ),
+                    "Prix max/m²": st.column_config.NumberColumn(
+                        format="%d €",
+                        width="small",
+                    ),
+                    "Surface moyenne": st.column_config.NumberColumn(
+                        format="%d m²",
+                        width="small",
+                    ),
+                    "Nb pièces moyen": st.column_config.NumberColumn(
+                        format="%.1f",
+                        width="small",
+                    ),
+                }
+            )
     # Section pour l'analyse streaming
     st.subheader("Analyse IA du marché local")
     
