@@ -242,6 +242,10 @@ if rechercher:
 # Affichage des résultats
 if st.session_state.biens:
     
+    # Récupération du rayon utilisé pour la recherche actuelle
+    rayon_recherche = st.session_state.current_search.get("rayon", rayon)
+    adresse_recherche = st.session_state.current_search.get("adresse", adresse)
+    
     # Métriques principales
     st.subheader("Aperçu du marché")
     
@@ -274,7 +278,7 @@ if st.session_state.biens:
     with col4:
         st.metric(
             label="Rayon",
-            value=f"{rayon} m"
+            value=f"{rayon_recherche} m"  # Utilise le rayon de la recherche
         )
     
     # Carte et graphiques
@@ -287,12 +291,12 @@ if st.session_state.biens:
         center_lat = sum(bien["latitude"] for bien in st.session_state.biens) / len(st.session_state.biens)
         center_lon = sum(bien["longitude"] for bien in st.session_state.biens) / len(st.session_state.biens)
         
-        # Calcul du zoom optimal basé sur le rayon
-        if rayon <= 500:
+        # Calcul du zoom optimal basé sur le rayon de recherche (pas le slider actuel)
+        if rayon_recherche <= 500:
             zoom_level = 16
-        elif rayon <= 1000:
+        elif rayon_recherche <= 1000:
             zoom_level = 15
-        elif rayon <= 2000:
+        elif rayon_recherche <= 2000:
             zoom_level = 14
         else:
             zoom_level = 13
@@ -315,8 +319,8 @@ if st.session_state.biens:
             popup=folium.Popup(f"""
             <div style="font-family: Arial; width: 180px; text-align: center;">
                 <h4 style="color: #ff6b35; margin-bottom: 10px;">Adresse recherchée</h4>
-                <p><strong>Rayon:</strong> {rayon} m</p>
-                <p style="color: #666; font-size: 12px;">{adresse}</p>
+                <p><strong>Rayon:</strong> {rayon_recherche} m</p>
+                <p style="color: #666; font-size: 12px;">{adresse_recherche}</p>
             </div>
             """, max_width=200),
             icon=folium.Icon(color='orange', icon='star', prefix='fa'),
@@ -324,7 +328,7 @@ if st.session_state.biens:
         ).add_to(m)
         
         # Cercle de rayon parfaitement centré avec marge de sécurité
-        rayon_reel = rayon + 100  # Ajout de 100m de marge
+        rayon_reel = rayon_recherche + 100  # Ajout de 100m de marge
         folium.Circle(
             location=[center_lat, center_lon],
             radius=rayon_reel,
@@ -333,8 +337,8 @@ if st.session_state.biens:
             fill=True,
             fillColor='#ff6b35',
             fillOpacity=0.1,
-            popup=f"Zone de recherche: {rayon}m",
-            tooltip=f"Rayon affiché: {rayon}m"
+            popup=f"Zone de recherche: {rayon_recherche}m",
+            tooltip=f"Rayon affiché: {rayon_recherche}m"
         ).add_to(m)
         
         # Groupement des biens par coordonnées pour gérer les doublons
@@ -495,7 +499,7 @@ if st.session_state.biens:
             key="main_map"
         )
         
-        st.info(f"Zone fixée sur {rayon}m autour de: {adresse[:50]}{'...' if len(adresse) > 50 else ''}")
+        st.info(f"Zone fixée sur {rayon_recherche}m autour de: {adresse_recherche[:50]}{'...' if len(adresse_recherche) > 50 else ''}")
     
     with col_chart:
         st.subheader("Analyse des prix")
@@ -520,10 +524,9 @@ if st.session_state.biens:
     if not st.session_state.analysis_done:
         if st.button("Lancer l'analyse IA", type="primary"):
             with st.spinner("Analyse en cours..."):
-                current_search = st.session_state.current_search
                 stream_analysis_sync(
-                    current_search.get("adresse", adresse), 
-                    current_search.get("rayon", rayon), 
+                    adresse_recherche, 
+                    rayon_recherche, 
                     analysis_placeholder
                 )
                 st.session_state.analysis_done = True
