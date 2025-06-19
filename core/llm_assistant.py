@@ -163,11 +163,11 @@ def formater_prompt(stats: dict, rayon_m: int) -> str:
         parts.append(
             f"{t} :\n"
             f"- Nombre de biens : {nombre_biens_par_type.get(t, 0)}\n"
-            f"- Prix moyen au m² : {stats['prix_m2_moyen'].get(t)} €\n"
-            f"- Prix max au m² : {stats['prix_m2_max'].get(t)} €\n"
-            f"- Prix min au m² : {stats['prix_m2_min'].get(t)} €\n"
-            f"- Surface moyenne : {stats['surface_moyenne'].get(t)} m²\n"
-            f"- Nombre de pièces moyen : {stats['nombre_pieces_moyen'].get(t)}\n"
+            f"- Prix moyen au m² : {round(stats['prix_m2_moyen'].get(t),2)} €\n"
+            f"- Prix max au m² : {round(stats['prix_m2_max'].get(t),2)} €\n"
+            f"- Prix min au m² : {round(stats['prix_m2_min'].get(t),2)} €\n"
+            f"- Surface moyenne : {round(stats['surface_moyenne'].get(t),2)} m²\n"
+            f"- Nombre de pièces moyen : {round(stats['nombre_pieces_moyen'].get(t),2)}\n"
         )
 
     return (

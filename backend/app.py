@@ -14,6 +14,14 @@ from concurrent.futures import ThreadPoolExecutor
 from core.geocod import geocode_ban, get_biens_proches
 from core.llm_assistant import analyse_biens_par_llm_stream  # Version streaming
 from dotenv import load_dotenv
+from core.stat_compute import (
+    prix_m2_moyen_par_type,
+    prix_m2_max_par_type,
+    prix_m2_min_par_type,
+    surface_moyenne_par_type,
+    nombre_pieces_moyen_par_type,
+    nombre_biens_par_type
+)
 
 load_dotenv()
 
@@ -57,7 +65,7 @@ def geocode_cached(adresse: str) -> Tuple[float, float]:
 @app.get("/biens_proches")
 async def biens_proches(
     adresse: str = Query(..., description="Adresse en Île-de-France"),
-    rayon_m: int = Query(500, ge=100, le=10000, description="Rayon en mètres")
+    rayon_m: int = Query(500, ge=100, le=1000, description="Rayon en mètres")
 ):
     """
     Endpoint pour récupérer les biens immobiliers proches (données de base uniquement)
@@ -89,10 +97,20 @@ async def biens_proches(
             "distance_max": max(b["distance_m"] for b in biens) if biens else 0,
             "temps_execution": round(time.time() - start_time, 2)
         }
+        stats_per_type = {
+                    "prix_m2_moyen_par_type": prix_m2_moyen_par_type(biens),
+                    "prix_m2_max_par_type": prix_m2_max_par_type(biens),
+                    "prix_m2_min_par_type": prix_m2_min_par_type(biens),
+                    "surface_moyenne_par_type": surface_moyenne_par_type(biens),
+                    "nombre_pieces_moyen_par_type": nombre_pieces_moyen_par_type(biens),
+                    "nombre_biens_par_type": nombre_biens_par_type(biens)
+                }
         
         return {
             "biens_proches": biens,
-            "stats": stats
+            "stats": stats,
+            "stats_per_type" : stats_per_type
+            
         }
         
     except HTTPException:
