@@ -1,0 +1,5 @@
+fastapi==0.115.13
+python-dotenv==1.1.0
+Requests==2.32.4
+SQLAlchemy==2.0.41
+together==1.5.17
