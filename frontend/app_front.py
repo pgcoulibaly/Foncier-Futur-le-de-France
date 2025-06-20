@@ -260,8 +260,6 @@ if rechercher:
 
                 if not biens:
                     st.info("Aucun bien trouvé dans ce rayon. Essayez d'augmenter le périmètre de recherche.")
-                else:
-                    st.success(f"{len(biens)} bien(s) trouvé(s) !")
 
             except Exception as e:
                 st.error(f"Erreur lors de la requête : {e}")
@@ -521,10 +519,8 @@ if st.session_state.biens:
         map_data = st_folium(
             m, 
             width=700, 
-            height=500,
-            returned_objects=["last_object_clicked"],
-            key="main_map"
-        )
+            height=500
+                )
         
         st.info(f"Zone fixée sur {rayon_recherche}m autour de: {adresse_recherche[:50]}{'...' if len(adresse_recherche) > 50 else ''}")
     
