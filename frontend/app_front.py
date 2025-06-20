@@ -10,7 +10,7 @@ import time
 API_URL = st.secrets.get("API_URL", "http://localhost:8000")
 # Configuration de la page
 st.set_page_config(
-    page_title="Immobilier Île-de-France", 
+    page_title="ProxImmo", 
     layout="wide",
     initial_sidebar_state="expanded",
     page_icon="🏠"
@@ -79,7 +79,7 @@ st.markdown("""
 # En-tête principal
 st.markdown("""
 <div class="main-header">
-    <h1>Immobilier Île-de-France</h1>
+    <h1>ProxImmo</h1>
     <p>Découvrez les biens immobiliers autour de vous avec notre analyse IA</p>
 </div>
 """, unsafe_allow_html=True)
