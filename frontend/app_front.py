@@ -232,6 +232,8 @@ if "current_search" not in st.session_state:
     st.session_state.current_search = {}
 if "stats_per_type" not in st.session_state:
     st.session_state.stats_per_type = {}
+if "coord" not in st.session_state:
+    st.session_state.coord = ()
 
 # Logique de recherche
 if rechercher:
@@ -257,6 +259,8 @@ if rechercher:
                 st.session_state.biens = biens
                 stats_per_type = data.get("stats_per_type", {})
                 st.session_state.stats_per_type = stats_per_type
+                coord = data.get("coord", ())
+                st.session_state.coord = coord
 
                 if not biens:
                     st.info("Aucun bien trouvé dans ce rayon. Essayez d'augmenter le périmètre de recherche.")
@@ -313,18 +317,17 @@ if st.session_state.biens:
         st.subheader("Localisation des biens")
         
         # Calcul du centre basé sur l'adresse recherchée (moyenne des coordonnées)
-        center_lat = sum(bien["latitude"] for bien in st.session_state.biens) / len(st.session_state.biens)
-        center_lon = sum(bien["longitude"] for bien in st.session_state.biens) / len(st.session_state.biens)
+        if st.session_state['coord'] :    
+            center_lat = st.session_state['coord'][0]
+            center_lon = st.session_state['coord'][1]
         
-        # Calcul du zoom optimal basé sur le rayon de recherche (pas le slider actuel)
+        # Calcul du zoom optimal basé sur le rayon de recherche 
         if rayon_recherche <= 500:
             zoom_level = 16
-        elif rayon_recherche <= 1000:
-            zoom_level = 15
-        elif rayon_recherche <= 2000:
-            zoom_level = 14
         else:
-            zoom_level = 13
+            zoom_level = 15
+        
+      
         
         # Carte Folium
         m = folium.Map(
@@ -451,7 +454,7 @@ if st.session_state.biens:
                     popup_content += f"""
                     <div style="background: #f8f9fa; padding: 6px; border-radius: 3px; margin: 3px 0; border-left: 3px solid {border_color};">
                         <p style="margin: 1px 0; font-weight: bold;">{price_indicator} {bien["type_local"]} #{i+1}</p>
-                        <p style="margin: 1px 0; font-size: 12px;"><strong>Prix:</strong> {bien["prix_m2"]:,} €/m²</p>
+                        <p style="margin: 1px 0; font-size: 12px;"><strong>Prix:</strong> {round(bien["prix_m2"],2):,} €/m²</p>
                         <p style="margin: 1px 0; font-size: 12px;"><strong>Surface:</strong> {bien["surface_reelle_bati"]} m² | <strong>Pièces:</strong> {bien["nombre_pieces_principales"]}</p>
                     </div>
                     """
@@ -503,7 +506,7 @@ if st.session_state.biens:
                         popup=folium.Popup(f"""
                         <div style="font-family: Arial; width: 180px;">
                             <h5 style="color: #667eea; margin-bottom: 5px;">{bien["type_local"]} #{i+1}</h5>
-                            <p style="margin: 1px 0; font-size: 11px;"><strong>Prix:</strong> {bien["prix_m2"]:,} €/m²</p>
+                            <p style="margin: 1px 0; font-size: 11px;"><strong>Prix:</strong> {round(bien["prix_m2"],2):,} €/m²</p>
                             <p style="margin: 1px 0; font-size: 11px;"><strong>Surface:</strong> {bien["surface_reelle_bati"]} m²</p>
                             <p style="margin: 1px 0; font-size: 11px;"><strong>Pièces:</strong> {bien["nombre_pieces_principales"]}</p>
                         </div>
@@ -621,7 +624,7 @@ if st.session_state.biens:
                 }
             )
     # Section pour l'analyse streaming
-    st.subheader("Analyse IA du marché local")
+    st.subheader("Analyse du marché local")
     
     # Placeholder pour l'analyse
     analysis_placeholder = st.empty()
