@@ -67,7 +67,7 @@ def get_biens_proches(lat: float, lon: float, rayon_m: int,param: dict ) -> List
         SELECT 
             latitude, longitude, prix_m2, type_local, 
             date_mutation, surface_reelle_bati, id_mutation, 
-            nombre_pieces_principales
+            nombre_pieces_principales, adresse
         FROM valeurs_foncieres_idf_2024
         WHERE 
             latitude BETWEEN :lat_min AND :lat_max
@@ -106,6 +106,7 @@ def get_biens_proches(lat: float, lon: float, rayon_m: int,param: dict ) -> List
                         "surface_reelle_bati": float(row.surface_reelle_bati) ,
                         "id_mutation": row.id_mutation,
                         "nombre_pieces_principales": int(row.nombre_pieces_principales),
+                        "adresse" : str(row.adresse),
                         "distance_m": round(distance, 1)
                     })
             
