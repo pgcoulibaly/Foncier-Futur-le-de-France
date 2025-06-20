@@ -7,6 +7,7 @@ import pandas as pd
 import json
 import time
 
+API_URL = st.secrets.get("API_URL", "http://localhost:8000")
 # Configuration de la page
 st.set_page_config(
     page_title="Immobilier Île-de-France", 
@@ -99,7 +100,7 @@ def stream_analysis_sync(adresse, rayon, placeholder):
         
         # Requête streaming
         response = requests.get(
-            "http://localhost:8000/analyse_stream",
+            f"{API_URL}/analyse_stream",
             params={"adresse": adresse, "rayon_m": rayon},
             stream=True,
             timeout=60
@@ -248,7 +249,7 @@ if rechercher:
         with st.spinner("Recherche des biens..."):
             try:
                 # Appel à l'endpoint des données de base
-                res = requests.get("http://localhost:8000/biens_proches", params={
+                res = requests.get(f"{API_URL}/biens_proches", params={
                     "adresse": adresse,
                     "rayon_m": rayon
                 })
