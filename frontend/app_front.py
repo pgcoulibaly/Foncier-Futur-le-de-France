@@ -316,16 +316,17 @@ if st.session_state.biens:
     with col_map:
         st.subheader("Localisation des biens")
         
+         
         # Calcul du centre basé sur l'adresse recherchée (moyenne des coordonnées)
-        if st.session_state['coord'] :    
-            center_lat = st.session_state['coord'][0]
-            center_lon = st.session_state['coord'][1]
+        center_lat = sum(bien["latitude"] for bien in st.session_state.biens) / len(st.session_state.biens)
+        center_lon = sum(bien["longitude"] for bien in st.session_state.biens) / len(st.session_state.biens)
         
-        # Calcul du zoom optimal basé sur le rayon de recherche 
-        if rayon_recherche <= 500:
+         # Calcul du zoom optimal basé sur le rayon
+        if rayon <= 500:
             zoom_level = 16
-        else:
+        else :
             zoom_level = 15
+       
         
       
         
@@ -406,6 +407,7 @@ if st.session_state.biens:
                             <p style="margin: 2px 0;"><strong>Prix:</strong> {round(bien["prix_m2"],2):,} €/m² <em>({price_status})</em></p>
                             <p style="margin: 2px 0;"><strong>Surface:</strong> {bien["surface_reelle_bati"]} m²</p>
                             <p style="margin: 2px 0;"><strong>Pièces:</strong> {bien["nombre_pieces_principales"]}</p>
+                            <p style="margin: 2px 0;"><strong>Adresse:</strong> {bien["adresse"]} </p>
                             <p style="margin: 2px 0;"><strong>Distance:</strong> {round(bien["distance_m"])} m</p>
                         </div>
                     </div>
@@ -456,6 +458,7 @@ if st.session_state.biens:
                         <p style="margin: 1px 0; font-weight: bold;">{price_indicator} {bien["type_local"]} #{i+1}</p>
                         <p style="margin: 1px 0; font-size: 12px;"><strong>Prix:</strong> {round(bien["prix_m2"],2):,} €/m²</p>
                         <p style="margin: 1px 0; font-size: 12px;"><strong>Surface:</strong> {bien["surface_reelle_bati"]} m² | <strong>Pièces:</strong> {bien["nombre_pieces_principales"]}</p>
+                        <p style="margin: 2px 0;"><strong>Adresse:</strong> {bien["adresse"]} </p>
                     </div>
                     """
                 
@@ -509,6 +512,7 @@ if st.session_state.biens:
                             <p style="margin: 1px 0; font-size: 11px;"><strong>Prix:</strong> {round(bien["prix_m2"],2):,} €/m²</p>
                             <p style="margin: 1px 0; font-size: 11px;"><strong>Surface:</strong> {bien["surface_reelle_bati"]} m²</p>
                             <p style="margin: 1px 0; font-size: 11px;"><strong>Pièces:</strong> {bien["nombre_pieces_principales"]}</p>
+                            <p style="margin: 2px 0;"><strong>Adresse:</strong> {bien["adresse"]} </p>
                         </div>
                         """, max_width=200),
                         color=color,
@@ -657,7 +661,7 @@ if st.session_state.biens:
         
         st.dataframe(
             df_display[['type_local', 'prix_m2', 'surface_reelle_bati', 
-                       'nombre_pieces_principales', 'distance_m']],
+                       'nombre_pieces_principales','adresse', 'distance_m']],
             use_container_width=True
         )
 
