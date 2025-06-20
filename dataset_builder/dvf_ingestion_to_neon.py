@@ -41,7 +41,9 @@ features = [
     'nature_mutation',
     'date_mutation',
     'valeur_fonciere',
-    'id_mutation'
+    'id_mutation',
+    'adresse_numero', 
+    'adresse_nom_voie',
 ]
 
 df_idf = df_idf[features]
@@ -57,6 +59,10 @@ df_idf = duckdb.query(query_1).df()
 
 # Suppression des lignes avec valeurs manquantes
 df_idf.dropna(inplace=True)
+#création de la colonne adresse
+df_idf['adresse'] = df_idf['adresse_numero'].astype(int).astype(str).str.cat(df_idf['adresse_nom_voie'].str.lower(), sep=' ')
+#suppression des colonne 'adresse_numero', 'adresse_nom_voie'
+df_idf.drop(['adresse_numero', 'adresse_nom_voie'], axis=1, inplace=True)
 
 # Calcul du prix au mètre carré
 query_2 = '''
