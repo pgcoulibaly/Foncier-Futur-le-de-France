@@ -205,7 +205,7 @@ with st.sidebar:
     
     adresse = st.text_input(
         "Adresse", 
-        placeholder="Ex: 1 Place de la République, Paris",
+        placeholder="Adresse uniquement en Île-de-France",
         help="Saisissez une adresse en Île-de-France"
     )
     
