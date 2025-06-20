@@ -75,6 +75,7 @@ async def biens_proches(
     try:
         # 1. Géocodage avec cache
         lat, lon = geocode_cached(adresse)
+        coord =(lat, lon)
         param["logger"].info(f"Géocodage: {adresse} -> ({lat}, {lon})")
         
         # 2. Recherche des biens
@@ -109,7 +110,8 @@ async def biens_proches(
         return {
             "biens_proches": biens,
             "stats": stats,
-            "stats_per_type" : stats_per_type
+            "stats_per_type" : stats_per_type,
+            "coord" : coord
             
         }
         
