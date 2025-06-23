@@ -12,7 +12,7 @@ def prix_m2_moyen_par_type(biens):
             prix = b.get("prix_m2")
             if type_local and prix is not None:
                 stats.setdefault(type_local, []).append(prix)
-        return {t: (round(sum(p)/len(p), 3) if p else None) for t, p in stats.items()}
+        return {t: (round(sum(p) / len(p), 3) if p else None) for t, p in stats.items()}
     except Exception as e:
         return {"error": f"Erreur dans prix_m2_moyen_par_type: {str(e)}"}
 
@@ -31,7 +31,7 @@ def nombre_pieces_moyen_par_type(biens):
             pieces = b.get("nombre_pieces_principales")
             if type_local and pieces is not None:
                 stats.setdefault(type_local, []).append(pieces)
-        return {t: (sum(p)/len(p) if p else None) for t, p in stats.items()}
+        return {t: (sum(p) / len(p) if p else None) for t, p in stats.items()}
     except Exception as e:
         return {"error": f"Erreur dans nombre_pieces_moyen_par_type: {str(e)}"}
 
@@ -91,7 +91,7 @@ def surface_moyenne_par_type(biens):
             surf = b.get("surface_reelle_bati")
             if type_local and surf is not None:
                 stats.setdefault(type_local, []).append(surf)
-        return {t: (sum(s)/len(s) if s else None) for t, s in stats.items()}
+        return {t: (sum(s) / len(s) if s else None) for t, s in stats.items()}
     except Exception as e:
         return {"error": f"Erreur dans surface_moyenne_par_type: {str(e)}"}
 
