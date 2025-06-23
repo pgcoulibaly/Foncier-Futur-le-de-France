@@ -99,7 +99,7 @@ df_idf.drop(["valeur_fonciere", "nature_mutation"], axis=1, inplace=True)
 print("Dataset final prêt :", df_idf.shape)
 
 
-# Colle ici l'URL obtenue depuis Neon
+
 neon_url = os.getenv("NEON_DB_URL")
 engine = create_engine(neon_url)
 
