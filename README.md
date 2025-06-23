@@ -71,4 +71,4 @@ L'application offre une expérience utilisateur complète pour l'analyse immobil
 - Une carte interactive affiche les biens vendus situés dans le périmètre choisi.
 - Des statistiques globales sont présentées pour l'ensemble des biens trouvés.
 - Un tableau détaille les statistiques par type de bien.
-- Un bouton permet de lancer une analyse LLM des statistiques, générant des insights et recommandations basés sur les données. 
+- Un bouton permet de lancer une analyse LLM des statistiques basées sur les données. 
